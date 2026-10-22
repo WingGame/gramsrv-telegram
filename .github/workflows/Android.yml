@@ -1,0 +1,57 @@
+name: Build Kuark Android
+
+on:
+  push:
+    branches: [ master, main ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Source
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'zulu'
+          java-version: '17'
+
+      - name: Setup Android SDK & Licenses
+        run: |
+          ANDROID_SDK_ROOT=$ANDROID_HOME
+          SDKMANAGER="$ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager"
+          if [ ! -f "$SDKMANAGER" ]; then
+            SDKMANAGER=$(find $ANDROID_SDK_ROOT/cmdline-tools -name sdkmanager | head -n 1)
+          fi
+          yes | $SDKMANAGER --licenses || true
+
+      - name: Configure Gradle Memory & ABI Filters
+        run: |
+          mkdir -p ~/.gradle
+          echo "org.gradle.jvmargs=-Xmx4096m -XX:+HeapDumpOnOutOfMemoryError -Dfile.encoding=UTF-8" >> ~/.gradle/gradle.properties
+          echo "org.gradle.parallel=false" >> ~/.gradle/gradle.properties
+          echo "org.gradle.workers.max=2" >> ~/.gradle/gradle.properties
+
+      - name: Build arm64-v8a APK
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleAfatRelease -PabiList=arm64-v8a --no-daemon --stacktrace
+
+      # این مرحله برای رفع خطا اضافه شده است تا ببینید فایل apk کجا ساخته شده
+      - name: Find APK files (Debug)
+        run: |
+          echo "Searching for APK files..."
+          find . -name "*.apk" -type f
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Kuark-arm64-v8a
+          # مسیر زیر باعث می‌شود گیت‌هاب در تمام پوشه‌ها به دنبال فایل apk بگردد
+          path: "**/build/outputs/apk/**/*.apk"
+          retention-days: 7
