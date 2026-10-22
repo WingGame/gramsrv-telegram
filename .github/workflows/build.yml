@@ -21,15 +21,19 @@ jobs:
           distribution: 'zulu'
           java-version: '17'
 
-      - name: Setup Android NDK & SDK Licenses
+      - name: Setup Android SDK & Licenses
         run: |
-          yes | sdkmanager --licenses || true
-          sdkmanager --install "ndk;25.1.8937393" "cmake;3.22.1"
+          ANDROID_SDK_ROOT=$ANDROID_HOME
+          SDKMANAGER="$ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager"
+          if [ ! -f "$SDKMANAGER" ]; then
+            SDKMANAGER=$(find $ANDROID_SDK_ROOT/cmdline-tools -name sdkmanager | head -n 1)
+          fi
+          yes | $SDKMANAGER --licenses || true
 
       - name: Configure Gradle Memory & ABI Filters
         run: |
           mkdir -p ~/.gradle
-          echo "org.gradle.jvmargs=-Xmx3072m -XX:+HeapDumpOnOutOfMemoryError -Dfile.encoding=UTF-8" >> ~/.gradle/gradle.properties
+          echo "org.gradle.jvmargs=-Xmx4096m -XX:+HeapDumpOnOutOfMemoryError -Dfile.encoding=UTF-8" >> ~/.gradle/gradle.properties
           echo "org.gradle.parallel=false" >> ~/.gradle/gradle.properties
           echo "org.gradle.workers.max=2" >> ~/.gradle/gradle.properties
 
